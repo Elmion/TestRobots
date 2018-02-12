@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System;
 
 public class MathCore  {
@@ -24,7 +23,7 @@ public class MathCore  {
         storage2.AddNewResource("Oil",100); 
         storage1.AddNewResource("Ore", 100); 
         storage2.AddNewResource("Coal",100); 
-        NewGame(6, 6, storage1);
+        //NewGame(6, 6, storage1);
 
     }
 

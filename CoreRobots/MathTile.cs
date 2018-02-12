@@ -1,8 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-public class MathTile : MonoBehaviour {
+public class MathTile  {
 
 	// Use this for initialization
 	void Start () {
