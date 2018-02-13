@@ -6,48 +6,20 @@ using System.Text.RegularExpressions;
 public class LineTemplate
 {
 
-    public void Check()
+    public int CheckPrimary(string input, string inputtmp)
     {
-        string INPUT = "ore/cup/ore/ore/cup/oil";
-        string INPUTTMP = "ore/TMP0/ANY";
-
-        //готовим инпут
-        List<string> s = new List<string>(INPUT.Split('/'));
-        Dictionary<string, string> dl = new Dictionary<string, string>();
-        int counter = 0;
-        for (int i = 0; i < s.Count; i++)
+        List<string> inputVector = new List<string>(input.Split('/'));
+        List<string> templateVector = new List<string>(inputtmp.Split('/'));
+        Dictionary<string, int> OutDataBase = new Dictionary<string, int>();
+        int MaxChain = 0; //Максимальное вхождение шаблонов подряд
+        for (int i = 0; i < templateVector.Count; i++)
         {
-            if (!dl.ContainsValue(s[i]))
-            {
-                dl.Add("T" + counter, s[i]);
-                INPUT = INPUT.Replace(s[i], "T" + counter.ToString().PadLeft(2, '0'));
-                counter++;
-            }
+            OutDataBase.Add(templateVector[i], Regex.Matches(input, templateVector[i]).Count);
+            MaxChain += OutDataBase[templateVector[i]];
         }
-        //готовим инпуттмп
-        List<string> s1 = new List<string>(INPUTTMP.Split('/'));
-        Dictionary<string, string> dlt = new Dictionary<string, string>();
-        counter = 0;
-        for (int i = 0; i < s1.Count; i++)
-        {
-            if (!dlt.ContainsValue(s1[i]))
-            {
-                dlt.Add("T" + counter, s1[i]);
-                if (s1[i] == "ANY")
-                {
-                    INPUTTMP = INPUTTMP.Replace(s1[i], "(...)");
-                }
-                else
-                {
-                    INPUTTMP = INPUTTMP.Replace(s1[i], "T" + counter.ToString().PadLeft(2, '0'));
-                }
-                counter++;
-            }
-        }
-
-        MatchCollection c = Regex.Matches(INPUT, INPUTTMP);
-
+        return MaxChain;
     }
+
     public void Check2()
     {
 
