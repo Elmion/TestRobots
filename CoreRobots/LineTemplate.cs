@@ -24,7 +24,7 @@ public class LineTemplate
     {
 
         string INPUT = "ore/cup/ore/ore/cup/oil";
-        string INPUTTMP = "ore";
+        string INPUTTMP = "ore/";
 
         List<string> inputVector = new List<string>(INPUT.Split('/'));
         List<string> templateVector = new List<string>(INPUTTMP.Split('/'));
@@ -52,6 +52,105 @@ public class LineTemplate
             if (!OK) break;
         }
      }
+}
+public class IndexTemplate
+{
+    private class IndexItem
+    {
+        public string Data = string.Empty;
+        public List<IndexItem> listNexts;
+        public IndexItem parent;
+        public IndexItem()
+        {
+            parent = null;
+            listNexts = new List<IndexItem>();
+        }
+    }
+    private IndexItem orgin;
+
+    private int Cicles = 0;
+    private IndexItem CurrentItem = null;
+    private List<IndexItem> Template = null;
+    private bool TemplateFix = false;
+
+
+    public IndexTemplate()
+    {
+        orgin = new IndexItem();
+    }
+    public void AddTemplate(string template)
+    {
+        List<string> s = new List<string>(template.Split('/'));
+        IndexItem next = orgin;
+        for (int i = 0; i < s.Count; i++)
+        {
+            int numTMP = next.listNexts.FindIndex(x => x.Data == s[i]);
+            if (numTMP == -1)
+            {
+                IndexItem newBranch = new IndexItem() { Data = s[i], parent = next };
+                next.listNexts.Add(newBranch);
+                next = newBranch;
+            }
+            else
+            {
+                next = next.listNexts[numTMP];
+            }
+        }
+    }
+    /// <summary>
+    /// Смещается по индексу дальше если это возможно, если не возможно возвращается к началу и пробует двигаться 
+    /// по тому же шаблону добавляя при это Цикл
+    /// </summary>
+    /// <param name="nextResource"></param>
+    /// <returns>если движение вперёд возможно то true</returns>
+    public bool Next(string nextResource)
+    {
+        int index = CurrentItem.listNexts.FindIndex(x => x.Data == nextResource);
+        if(index != -1)
+        {
+            
+                CurrentItem = CurrentItem.listNexts[index];
+                Template.Add(CurrentItem);
+            
+            return true;
+        }
+        else if(TemplateFix == false)
+        {
+            if(Template[0].Data == nextResource)
+            {
+                TemplateFix = true;
+                CurrentItem = Template[0];
+                return true;
+            }
+        }
+        return false;
+    }
+    /// <summary>
+    /// Шаг назад
+    /// </summary>
+    /// <returns>Если это не начало то true</returns>
+    public bool Preverios()
+    {
+
+    }
+    /// <summary>
+    /// Перед новой линией
+    /// </summary>
+    public void StartNewLine()
+    {
+        CurrentItem = orgin;
+        Cicles = 0;
+        TemplateFix = false;
+    }
+    /// <summary>
+    /// для сбора информации перед сбросом.
+    /// </summary>
+    /// <param name=""></param>
+    /// <returns></returns>
+    public string EndLine(out Cicles)
+    {
+
+    }
 }
 
 public enum TemplateType
