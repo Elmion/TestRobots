@@ -93,6 +93,7 @@ public class GameCore
 }
 public class SimpleTile
 {
+    public Resource resource;
     public int x;
     public int y;
 }
