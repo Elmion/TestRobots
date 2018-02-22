@@ -58,6 +58,7 @@ public class IndexTemplate
     private class IndexItem
     {
         public string Data = string.Empty;
+        public bool canByEnd = false; //может быть окончанием
         public List<IndexItem> listNexts;
         public IndexItem parent;
         public IndexItem()
@@ -66,13 +67,9 @@ public class IndexTemplate
             listNexts = new List<IndexItem>();
         }
     }
+
+
     private IndexItem orgin;
-
-    private int Cicles = 0;
-    private IndexItem CurrentItem = null;
-    private List<IndexItem> Template = null;
-    private bool TemplateFix = false;
-
 
     public IndexTemplate()
     {
@@ -96,49 +93,88 @@ public class IndexTemplate
                 next = next.listNexts[numTMP];
             }
         }
+        next.canByEnd = true;//может быть окончанием
     }
+
+
+    private int Cicles = 0; //Количество цикллов шаблона
+    private int TemplatePosition = 0;
+    private IndexItem CurrentItem = null; //Текущий элемент в индексе, на нём продолжится поиск
+    private List<IndexItem> Template = null; //лист для шаблона
+    private bool TemplateFix = false;//Шаблон найден ищем продолжение по шаблону
+
     /// <summary>
     /// Смещается по индексу дальше если это возможно, если не возможно возвращается к началу и пробует двигаться 
-    /// по тому же шаблону добавляя при это Цикл
+    /// по тому же шаблону добавляя при этоv Цикл
     /// </summary>
     /// <param name="nextResource"></param>
     /// <returns>если движение вперёд возможно то true</returns>
     public bool Next(string nextResource)
     {
+        if (TemplateFix) return NextInTemplate(nextResource);
         int index = CurrentItem.listNexts.FindIndex(x => x.Data == nextResource);
-        if(index != -1)
+        if (index != -1) //нашли сдвигаеся по индексу
         {
-            
-                CurrentItem = CurrentItem.listNexts[index];
-                Template.Add(CurrentItem);
-            
+            CurrentItem = CurrentItem.listNexts[index];
+            Template.Add(CurrentItem);
             return true;
         }
-        else if(TemplateFix == false)
+        else
         {
-            if(Template[0].Data == nextResource)
+            // ищем самый большой подходящий шаблон
+            index = Template.FindLastIndex(x => x.canByEnd == true);
+            //Проверяем стукуемость с оставшимся хвостом
+            bool tailOK = true;
+            TemplatePosition = (Template.Count-1)- index;
+            for (int i = index+1; i < Template.Count; i++)
             {
-                TemplateFix = true;
-                CurrentItem = Template[0];
-                return true;
+                if (Template[i].Data != Template[index + 1 - i].Data) tailOK = false;
+            }
+            if (tailOK)
+            {
+                Template.RemoveRange(TemplatePosition+1, Template.Count - 1 - index);//Сформировали шаблон
+                if (Template[TemplatePosition].Data == nextResource)
+                {
+                    TemplateFix = true;  //фиксируем шаблон
+                    Cicles++;
+                    TemplatePosition++;
+                    if (TemplatePosition > Template.Count - 1) { TemplatePosition = 0; Cicles++; }
+                        return true;
+                }
             }
         }
         return false;
     }
+    private bool NextInTemplate(string nextResource)
+    {
+        if (Template[TemplatePosition].Data == nextResource)
+        {
+            TemplatePosition++;
+            if (TemplatePosition > Template.Count - 1)
+            {
+                TemplatePosition = 0;
+                Cicles++;
+            }
+            return true;
+        }
+        return false;
+    }
+
     /// <summary>
     /// Шаг назад
     /// </summary>
     /// <returns>Если это не начало то true</returns>
-    public bool Preverios()
-    {
+        //public bool Preverios()
+        //{
 
-    }
-    /// <summary>
-    /// Перед новой линией
-    /// </summary>
+        //}
+        /// <summary>
+        /// Перед новой линией
+        /// </summary>
     public void StartNewLine()
     {
         CurrentItem = orgin;
+        Template = new List<IndexItem>();
         Cicles = 0;
         TemplateFix = false;
     }
@@ -147,10 +183,10 @@ public class IndexTemplate
     /// </summary>
     /// <param name=""></param>
     /// <returns></returns>
-    public string EndLine(out Cicles)
-    {
+    //public string EndLine(out Cicles)
+    //{
 
-    }
+    //}
 }
 
 public enum TemplateType
