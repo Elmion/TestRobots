@@ -2,79 +2,114 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-
 public class LineTemplate
 {
+    private int Cicles = 0; //Количество цикллов шаблона
+    private int TemplatePosition = 0;
+    private int MissPositons = 0;
+    private IndexItem CurrentItem = null; //Текущий элемент в индексе, на нём продолжится поиск
+    private List<IndexItem> Template = null; //лист для шаблона
 
-    public int CheckPrimary(string input, string inputtmp)
-    {
-        List<string> inputVector = new List<string>(input.Split('/'));
-        List<string> templateVector = new List<string>(inputtmp.Split('/'));
-        Dictionary<string, int> OutDataBase = new Dictionary<string, int>();
-        int MaxChain = 0; //Максимальное вхождение шаблонов подряд
-        for (int i = 0; i < templateVector.Count; i++)
-        {
-            OutDataBase.Add(templateVector[i], Regex.Matches(input, templateVector[i]).Count);
-            MaxChain += OutDataBase[templateVector[i]];
-        }
-        return MaxChain;
-    }
-
-    public void Check2()
-    {
-
-        string INPUT = "ore/cup/ore/ore/cup/oil";
-        string INPUTTMP = "ore/";
-
-        List<string> inputVector = new List<string>(INPUT.Split('/'));
-        List<string> templateVector = new List<string>(INPUTTMP.Split('/'));
-        //Dictionary<string, string> templateBase = new Dictionary<string, string>();
-        int MaxChain = 0; //Максимальное вхождение шаблонов подряд
-        for (int i = 0, k = 0; i < inputVector.Count; i++)
-        {
-            bool OK = false;
-            if (inputVector[i] == templateVector[k] || templateVector[k].Contains("ANY"))
-            {
-                OK = true;
-            }
-            else
-            if (templateVector[k].Contains("TMP"))
-            {
-                string ChengingTemplate = templateVector[k];
-                for (int j = k; j < templateVector.Count; j++)
-                {
-                    if (templateVector[j]== ChengingTemplate) templateVector[k] = inputVector[i];
-                }
-                OK = true;
-            }
-            k++;
-            if (k > templateVector.Count - 1 && OK) { k = 0; MaxChain++; } 
-            if (!OK) break;
-        }
-     }
-}
-public class IndexTemplate
-{
-    private class IndexItem
-    {
-        public string Data = string.Empty;
-        public bool canByEnd = false; //может быть окончанием
-        public List<IndexItem> listNexts;
-        public IndexItem parent;
-        public IndexItem()
-        {
-            parent = null;
-            listNexts = new List<IndexItem>();
-        }
-    }
-
+    LineState state = LineState.StartNewLine;
 
     private IndexItem orgin;
 
-    public IndexTemplate()
+    public LineTemplate()
     {
         orgin = new IndexItem();
     }
+    public bool Next(string nextResource)
+    {
+        switch (state)
+        {
+            case LineState.StartNewLine:
+                CurrentItem = orgin;
+                Template = new List<IndexItem>();
+                Cicles = 0;
+                MissPositons = 0;
+                state = LineState.TemplateSearch;
+                return Next(nextResource); 
+            case LineState.TemplateSearch:
+                int index = CurrentItem.listNexts.FindIndex(x => x.Data == nextResource);
+                if (index != -1) //нашли сдвигаеся по индексу
+                {
+                    CurrentItem = CurrentItem.listNexts[index];
+                    Template.Add(CurrentItem);
+                    return true;
+                }
+                else
+                {
+                    // ищем самый большой подходящий шаблон
+                    index = Template.FindLastIndex(x => x.canByEnd == true);
+                    List<IndexItem> Tail = Template.GetRange(index+1, (Template.Count-1) - index);
+
+                    if (index == -1) // не нашли не одного шаблона
+                    {
+                        state = LineState.Miss;
+                        Cicles = 0;
+                        MissPositons = 1;// последняя введёная позиция ошибочна
+                        return false;
+                    }
+                    //Проверяем стукуемость с оставшимся хвостом
+                    bool tailOK = true;
+                    int counterTmp = (Template.Count - 1) - index; //кэшируем 
+                    for (int i = 0; i <= counterTmp; i++)
+                    {
+                        if((i <counterTmp && Template[i].Data != Tail[i].Data) || (i == (counterTmp) && (Template[0].Data != nextResource) ))
+                          {
+                            tailOK = false;
+                            break;
+                          } 
+                    }
+                    Template.RemoveRange(index + 1, (Template.Count - 1) - index);//Сформировали шаблон, хоть какой то
+                    if (tailOK)
+                        {
+                             //шаблон найден  и хвост соотвесвтует
+                             state = LineState.SearchContinue;                                         
+                             Cicles = (int)System.Math.Floor((float)((Tail.Count+1)/ Template.Count)) +1;//(хвост + последний введёный символ )/ длина шаблона + сам шаблон                  
+                             TemplatePosition = ((Tail.Count + 1) + Template.Count) - Cicles * Template.Count;//Полная длина -  Кол-во позиций с полными циклами
+                            // return  Next(nextResource);
+                        }
+                        else
+                        {
+                              //нашли шаблон но последняя в хвосте не соотвествует;
+                              state = LineState.Miss;
+                              Cicles = 1;
+                              MissPositons = 1;
+                        }
+                    }
+                return false;
+            case LineState.SearchContinue:
+                if (Template[TemplatePosition].Data == nextResource )
+                {
+                    TemplatePosition++;
+                    if (TemplatePosition > Template.Count - 1)
+                    {
+                        TemplatePosition = 0;
+                        Cicles++;
+                    }
+                    return true;
+                }
+                state = LineState.Miss;
+                return Next(nextResource);
+            case LineState.Miss:
+                MissPositons++;
+                break;
+        }
+        return false;
+    }
+    public bool Preverios()
+    {
+        MissPositons--;
+        if (MissPositons == 0)
+        {
+            if (state == LineState.SearchContinue)
+            {
+
+            }
+        }
+    }
+
     public void AddTemplate(string template)
     {
         List<string> s = new List<string>(template.Split('/'));
@@ -95,101 +130,31 @@ public class IndexTemplate
         }
         next.canByEnd = true;//может быть окончанием
     }
-
-
-    private int Cicles = 0; //Количество цикллов шаблона
-    private int TemplatePosition = 0;
-    private IndexItem CurrentItem = null; //Текущий элемент в индексе, на нём продолжится поиск
-    private List<IndexItem> Template = null; //лист для шаблона
-    private bool TemplateFix = false;//Шаблон найден ищем продолжение по шаблону
-
-    /// <summary>
-    /// Смещается по индексу дальше если это возможно, если не возможно возвращается к началу и пробует двигаться 
-    /// по тому же шаблону добавляя при этоv Цикл
-    /// </summary>
-    /// <param name="nextResource"></param>
-    /// <returns>если движение вперёд возможно то true</returns>
-    public bool Next(string nextResource)
+    public void EndLine()
     {
-        if (TemplateFix) return NextInTemplate(nextResource);
-        int index = CurrentItem.listNexts.FindIndex(x => x.Data == nextResource);
-        if (index != -1) //нашли сдвигаеся по индексу
-        {
-            CurrentItem = CurrentItem.listNexts[index];
-            Template.Add(CurrentItem);
-            return true;
-        }
-        else
-        {
-            // ищем самый большой подходящий шаблон
-            index = Template.FindLastIndex(x => x.canByEnd == true);
-            //Проверяем стукуемость с оставшимся хвостом
-            bool tailOK = true;
-            TemplatePosition = (Template.Count-1)- index;
-            for (int i = index+1; i < Template.Count; i++)
-            {
-                if (Template[i].Data != Template[index + 1 - i].Data) tailOK = false;
-            }
-            if (tailOK)
-            {
-                Template.RemoveRange(TemplatePosition+1, Template.Count - 1 - index);//Сформировали шаблон
-                if (Template[TemplatePosition].Data == nextResource)
-                {
-                    TemplateFix = true;  //фиксируем шаблон
-                    Cicles++;
-                    TemplatePosition++;
-                    if (TemplatePosition > Template.Count - 1) { TemplatePosition = 0; Cicles++; }
-                        return true;
-                }
-            }
-        }
-        return false;
+        state = LineState.StartNewLine;
     }
-    private bool NextInTemplate(string nextResource)
+    private class IndexItem
     {
-        if (Template[TemplatePosition].Data == nextResource)
+        public string Data = string.Empty;
+        public bool canByEnd = false; //может быть окончанием
+        public List<IndexItem> listNexts;
+        public IndexItem parent;
+        public IndexItem()
         {
-            TemplatePosition++;
-            if (TemplatePosition > Template.Count - 1)
-            {
-                TemplatePosition = 0;
-                Cicles++;
-            }
-            return true;
+            parent = null;
+            listNexts = new List<IndexItem>();
         }
-        return false;
+
     }
-
-    /// <summary>
-    /// Шаг назад
-    /// </summary>
-    /// <returns>Если это не начало то true</returns>
-        //public bool Preverios()
-        //{
-
-        //}
-        /// <summary>
-        /// Перед новой линией
-        /// </summary>
-    public void StartNewLine()
+    private enum LineState
     {
-        CurrentItem = orgin;
-        Template = new List<IndexItem>();
-        Cicles = 0;
-        TemplateFix = false;
+        StartNewLine,
+        TemplateSearch,
+        SearchContinue,
+        EndLine,
+        Miss
     }
-    /// <summary>
-    /// для сбора информации перед сбросом.
-    /// </summary>
-    /// <param name=""></param>
-    /// <returns></returns>
-    //public string EndLine(out Cicles)
-    //{
-
-    //}
 }
 
-public enum TemplateType
-{
 
-}
