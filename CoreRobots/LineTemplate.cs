@@ -2,14 +2,19 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
+
 public class LineTemplate
 {
-    private int Cicles = 0; //Количество цикллов шаблона
+    //Исходящий блок
+    public  int Cicles = 0; //Количество циклов шаблона
+    public System.Action TemplateAction = null;
+    public List<string> Tail = null;
+
     private int TemplatePosition = 0;
     private int MissPositons = 0;
     private IndexItem CurrentItem = null; //Текущий элемент в индексе, на нём продолжится поиск
     private List<IndexItem> Template = null; //лист для шаблона
-
+    private List<string> History = null;
     LineState state = LineState.StartNewLine;
 
     private IndexItem orgin;
@@ -17,9 +22,12 @@ public class LineTemplate
     public LineTemplate()
     {
         orgin = new IndexItem();
+        History = new List<string>();
     }
+
     public bool Next(string nextResource)
     {
+        History.Add(nextResource);
         switch (state)
         {
             case LineState.StartNewLine:
@@ -28,6 +36,7 @@ public class LineTemplate
                 Cicles = 0;
                 MissPositons = 0;
                 state = LineState.TemplateSearch;
+                History.Clear();
                 return Next(nextResource); 
             case LineState.TemplateSearch:
                 int index = CurrentItem.listNexts.FindIndex(x => x.Data == nextResource);
@@ -64,7 +73,7 @@ public class LineTemplate
                     Template.RemoveRange(index + 1, (Template.Count - 1) - index);//Сформировали шаблон, хоть какой то
                     if (tailOK)
                         {
-                             //шаблон найден  и хвост соотвесвтует
+                             //шаблон найден  и хвост соотвествтует
                              state = LineState.SearchContinue;                                         
                              Cicles = (int)System.Math.Floor((float)((Tail.Count+1)/ Template.Count)) +1;//(хвост + последний введёный символ )/ длина шаблона + сам шаблон                  
                              TemplatePosition = ((Tail.Count + 1) + Template.Count) - Cicles * Template.Count;//Полная длина -  Кол-во позиций с полными циклами
@@ -74,10 +83,10 @@ public class LineTemplate
                         {
                               //нашли шаблон но последняя в хвосте не соотвествует;
                               state = LineState.Miss;
-                              Cicles = 1;
+                              Cicles = (int)System.Math.Floor((float)((Tail.Count + 1) / Template.Count)) + 1;
                               MissPositons = 1;
                         }
-                    }
+                 }
                 return false;
             case LineState.SearchContinue:
                 if (Template[TemplatePosition].Data == nextResource )
@@ -100,14 +109,13 @@ public class LineTemplate
     }
     public bool Preverios()
     {
-        MissPositons--;
-        if (MissPositons == 0)
-        {
-            if (state == LineState.SearchContinue)
-            {
-
-            }
-        }
+        if (History.Count == 0) return false;
+        History.RemoveAt(History.Count - 1);//Удалили последний
+        string[] buff = new string[History.Count];//В буффер, история затрётся.
+        History.CopyTo(buff);
+        state = LineState.StartNewLine;
+        for (int i = 0; i < buff.Length ; i++) Next(buff[i]);
+        return true;
     }
 
     public void AddTemplate(string template)
@@ -132,12 +140,14 @@ public class LineTemplate
     }
     public void EndLine()
     {
+        History.Clear();
         state = LineState.StartNewLine;
     }
     private class IndexItem
     {
         public string Data = string.Empty;
         public bool canByEnd = false; //может быть окончанием
+        public System.Action<int> EndAction = null; 
         public List<IndexItem> listNexts;
         public IndexItem parent;
         public IndexItem()
@@ -145,7 +155,6 @@ public class LineTemplate
             parent = null;
             listNexts = new List<IndexItem>();
         }
-
     }
     private enum LineState
     {
